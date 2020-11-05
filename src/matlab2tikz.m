@@ -145,7 +145,7 @@ function matlab2tikz(varargin)
 
     m2t.args            = []; % For command line arguments
     m2t.current         = []; % For currently active objects
-    m2t.transform       = []; % For hgtransform groups
+    m2t.transform       = {}; % For hgtransform groups
     m2t.pgfplotsVersion = [1,3];
     m2t.about.name      = 'matlab2tikz';
     m2t.about.version   = '1.1.0';
@@ -697,9 +697,9 @@ function [m2t, pgfEnvironments] = handleAllChildren(m2t, h)
                 %   children. The hgtransform object applies the transformation
                 %   matrix to all its children.
                 % More information at http://www.mathworks.de/de/help/matlab/creating_plots/group-objects.html.
-                m2t.transform = get(child, 'Matrix');
+                m2t.transform{end+1} = get(child, 'Matrix');
                 [m2t, str] = handleAllChildren(m2t, child);
-                m2t.transform = [];
+                m2t.transform = m2t.transform(1:end-1);
 
             case 'surface'
                 [m2t, str] = handleObject(m2t, child, @drawSurface);
@@ -818,8 +818,12 @@ end
 % ==============================================================================
 function data = applyHgTransform(m2t, data)
     if ~isempty(m2t.transform)
-        R = m2t.transform(1:3,1:3);
-        t = m2t.transform(1:3,4);
+        transform = eye(4); % fold(@mtimes, m2t.transform)
+        for i = 1:numel(m2t.transform)
+            transform = transform * m2t.transform{i};
+        end
+        R = transform(1:3,1:3);
+        t = transform(1:3,4);
         n = size(data, 1);
         data = data * R' + kron(ones(n,1), t');
     end
